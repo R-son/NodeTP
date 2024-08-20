@@ -17,40 +17,67 @@ app.get('/users', async (req, res) => {
     let conn;
     try {
         conn = await pool.getConnection();
-        const rows = await conn.query('SELECT * FROM users');
+        const rows = await conn.query('SELECT id, username, email FROM Users'); 
+        res.json(rows);
+        conn.end();
     }
     catch (err) {
         console.error(err);
     }
 })
+
 app.post('/users', async (req, res) => {
     try {
-        const {name, email} = req.body;
+        const { username, email, password } = req.body;
         const conn = await pool.getConnection();
-        const result = await conn.query("INSERT INTO users (name, email) VALUES (?, ?)", [name, email]);
+        const result = await conn.query(
+            "INSERT INTO Users (username, email, password) VALUES (?, ?, ?)",
+            [username, email, password]
+        );
+        const insertedId = result.insertId.toString();
+        res.status(201).json({ id: insertedId });
+        conn.end();
     } catch (err) {
-        console.error(err);
+        console.error('Failed to add user:', err);
+        res.status(500).send('Internal Server Error');
     }
 });
 
 app.put('/users/:id', async (req, res) => {
+    let conn;
     try {
-        const {name, email} = req.body;
-        const {id} = req.params;
-        const conn = await pool.getConnection();
-        await conn.query("UPDATE users SET name = ?, email = ? WHERE id = ?", [name, email, id]);
+        const { username, email } = req.body;
+        const { id } = req.params;
+        conn = await pool.getConnection();
+        const result = await conn.query("UPDATE Users SET username = ?, email = ?", [username, email]);
+        if (result.affectedRows > 0) {
+            res.sendStatus(200);
+        } else {
+            res.status(404).send('User not found');
+        }
+        conn.end();
     } catch (err) {
-        console.error(err);
+        console.error('Error updating user:', err);
+        res.status(500).send('Internal Server Error');
     }
 });
 
+
 app.delete('/users/:id', async (req, res) => {
+    let conn;
     try {
         const { id } = req.params;
-        const conn = await pool.getConnection();
-        await conn.query("DELETE FROM users WHERE id = ?", [id]);
+        conn = await pool.getConnection();
+        const result = await conn.query("DELETE FROM Users WHERE id = ?", [id]);
+        if (result.affectedRows > 0) {
+            res.sendStatus(200);
+        } else {
+            res.status(404).send('User not found');
+        }
+        conn.end();
     } catch (err) {
-        console.error(err);
+        console.error('Error deleting user:', err);
+        res.status(500).send('Internal Server Error');
     }
 });
 
@@ -68,6 +95,7 @@ app.post('/products', async (req, res) => {
         const {name, price} = req.body;
         const conn = await pool.getConnection();
         const result = await conn.query("INSERT INTO products (name, price) VALUES (?, ?)", [name, price]);
+        conn.end();
     } catch (err) {
         console.error(err);
     }
@@ -79,6 +107,7 @@ app.put('/products/:id', async (req, res) => {
         const {id} = req.params;
         const conn = await pool.getConnection();
         await conn.query("UPDATE products SET name = ?, price = ? WHERE id = ?", [name, price, id]);
+        conn.end();
     } catch (err) {
         console.error(err);
     }
@@ -89,9 +118,10 @@ app.delete('/products/:id', async (req, res) => {
         const {id} = req.params;
         const conn = await pool.getConnection();
         await conn.query("DELETE FROM products WHERE id = ?", [id]);
+        conn.end();
     } catch (err) {
         console.error(err);
     }
 });
 
-app.listen(3000, () => {});
+app.listen(3001, () => {});
